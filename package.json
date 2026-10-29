@@ -4,8 +4,12 @@
   "private": true,
   "description": "Delik Deşik — hole.io tarzı mahalle yutma oyunu",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "build": "echo \"Derleme adımı yok: oyun hazır statik dosyalardan oluşuyor.\""
   },
   "license": "MIT",
-  "type": "commonjs"
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18"
+  }
 }
