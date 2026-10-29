@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#16131f">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Cellipse cx=%2250%22 cy=%2255%22 rx=%2244%22 ry=%2230%22 fill=%22%23ff3d6e%22/%3E%3Cellipse cx=%2250%22 cy=%2255%22 rx=%2236%22 ry=%2223%22 fill=%22%2316131f%22/%3E%3C/svg%3E">
+<title>Delik Deşik — Mahalleyi Yut!</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #16131f; touch-action: none; user-select: none; -webkit-user-select: none; }
+  body { font-family: 'Baloo 2', system-ui, sans-serif; color: #fff; }
+  canvas { display: block; }
+  .hud { position: fixed; pointer-events: none; z-index: 5; display: none; }
+  body.playing .hud { display: block; }
+  .chip { background: rgba(22, 19, 31, .72); backdrop-filter: blur(6px); border-radius: 14px; padding: 6px 14px; box-shadow: 0 4px 14px rgba(0,0,0,.25); }
+
+  #topL { top: max(12px, env(safe-area-inset-top)); left: 12px; display: none; gap: 8px; }
+  body.playing #topL { display: flex; }
+  #quit { pointer-events: auto; border: 0; color: #fff; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
+  #time { font-size: 28px; font-weight: 800; min-width: 86px; text-align: center; }
+  #time.hurry { color: #ff5d5d; animation: pulse .5s infinite alternate; }
+  #scoreBox { font-size: 15px; line-height: 1.1; padding-top: 8px; }
+  #score { display: block; font-size: 24px; font-weight: 800; color: #ffd166; }
+
+  #board { top: max(12px, env(safe-area-inset-top)); right: 12px; list-style: none; min-width: 190px; font-size: 15px; }
+  #board li, .list li { display: flex; align-items: center; gap: 8px; padding: 1px 0; }
+  #board li span, .list li span { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+  #board li i, .list li i { width: 11px; height: 11px; border-radius: 50%; flex: none; }
+  #board li.me, .list li.me { color: #ffd166; font-weight: 800; }
+
+  #minimap { bottom: 14px; left: 14px; width: 130px; height: 130px; border-radius: 14px; border: 3px solid rgba(255,255,255,.85); box-shadow: 0 6px 18px rgba(0,0,0,.35); }
+  #powers { bottom: 18px; left: 50%; transform: translateX(-50%); display: none; gap: 8px; }
+  body.playing #powers { display: flex; }
+  .pw { background: var(--c); color: #fff; padding: 4px 12px; border-radius: 999px; font-weight: 700; font-size: 15px; box-shadow: 0 3px 10px rgba(0,0,0,.3); }
+  #combo { top: 22%; left: 50%; transform: translateX(-50%) scale(.6); font-size: 34px; font-weight: 800; color: #ffd166; text-shadow: 0 3px 0 #b5179e, 0 6px 14px rgba(0,0,0,.4); opacity: 0; transition: .15s; }
+  #combo.show { opacity: 1; transform: translateX(-50%) scale(1); }
+  #toast { position: fixed; top: 34%; left: 50%; transform: translate(-50%, -50%) scale(.7); font-size: 30px; font-weight: 800; text-shadow: 0 3px 12px rgba(0,0,0,.55); opacity: 0; transition: .2s; pointer-events: none; z-index: 6; text-align: center; white-space: nowrap; }
+  #toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+
+  #labels { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 4; }
+  .tag { position: absolute; left: 0; top: 0; font-weight: 700; font-size: 14px; padding: 0 9px; border-radius: 999px; background: rgba(0,0,0,.45); border-bottom: 3px solid var(--c); white-space: nowrap; }
+  .tag.me { font-size: 15px; background: rgba(0,0,0,.6); }
+  .float { position: absolute; left: 0; top: 0; font-weight: 800; font-size: 20px; color: #fff; text-shadow: 0 2px 6px rgba(0,0,0,.6); white-space: nowrap; }
+  .float.big { font-size: 28px; color: #ffd166; }
+  .float.gold { font-size: 26px; color: #ffe14d; text-shadow: 0 0 10px #ff9f1c, 0 2px 4px #000; }
+
+  #mute { position: fixed; bottom: 14px; right: 14px; z-index: 9; width: 44px; height: 44px; border-radius: 50%; border: 0; font-size: 20px; background: rgba(22,19,31,.7); cursor: pointer; }
+
+  .overlay { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; background: radial-gradient(ellipse at center, rgba(22,19,31,.25), rgba(22,19,31,.75)); transition: opacity .3s; }
+  .overlay.hidden { opacity: 0; pointer-events: none; }
+  .card { width: min(420px, 92vw); background: #fffaf0; color: #2b2238; border-radius: 26px; padding: 26px 24px 22px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.45), 0 0 0 6px rgba(255,255,255,.15); }
+  h1 { font-size: 54px; line-height: .95; font-weight: 800; letter-spacing: -1px; color: #2b2238; }
+  h1 span { color: #ff3d6e; }
+  .sub { margin: 6px 0 18px; color: #6b5f7a; font-size: 17px; }
+  #name { width: 100%; font: inherit; font-size: 20px; font-weight: 700; text-align: center; padding: 10px; border-radius: 14px; border: 3px solid #e6dcc8; background: #fff; color: #2b2238; outline: none; }
+  #name:focus { border-color: #ff3d6e; }
+  #swatches { display: flex; justify-content: center; gap: 8px; margin: 14px 0 14px; }
+  #swatches button { width: 32px; height: 32px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 2px #e6dcc8; cursor: pointer; transition: .15s; }
+  #swatches button.on { transform: scale(1.2); box-shadow: 0 0 0 3px #2b2238; }
+  .opts { margin: 0 0 16px; display: grid; gap: 8px; }
+  .row { display: flex; align-items: center; gap: 10px; transition: opacity .2s; }
+  .row.off { opacity: .35; pointer-events: none; }
+  .row label { width: 72px; text-align: left; font-weight: 700; font-size: 15px; color: #6b5f7a; }
+  .seg { flex: 1; display: flex; background: #efe6d4; border-radius: 12px; padding: 3px; gap: 3px; }
+  .seg button { flex: 1; font: inherit; font-size: 15px; font-weight: 700; border: 0; border-radius: 9px; padding: 5px 0; background: transparent; color: #6b5f7a; cursor: pointer; }
+  .seg button.on { background: #2b2238; color: #fff; }
+  .btn { width: 100%; font: inherit; font-size: 26px; font-weight: 800; padding: 10px; border: 0; border-radius: 16px; background: #ff3d6e; color: #fff; cursor: pointer; box-shadow: 0 6px 0 #c2185b; transition: transform .08s; }
+  .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #c2185b; }
+  .tips { margin-top: 16px; font-size: 14.5px; color: #6b5f7a; text-align: left; line-height: 1.45; }
+  .tips b { color: #2b2238; }
+  .link { margin-top: 12px; font: inherit; font-size: 16px; font-weight: 700; background: none; border: 0; color: #6b5f7a; text-decoration: underline; cursor: pointer; }
+  .best { margin-top: 10px; font-size: 14px; color: #8a7d99; }
+  .list { list-style: none; text-align: left; margin: 14px 0 18px; font-size: 17px; }
+  .list li b { font-weight: 800; }
+  .list li.me { color: #ff3d6e; }
+
+  #joy { position: fixed; display: none; width: 110px; height: 110px; margin: -55px 0 0 -55px; border-radius: 50%; background: rgba(255,255,255,.15); border: 2px solid rgba(255,255,255,.4); z-index: 7; pointer-events: none; }
+  #knob { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; border-radius: 50%; background: rgba(255,255,255,.75); transform: translate(-50%, -50%); }
+  @keyframes pulse { to { transform: scale(1.12); } }
+  @media (max-width: 600px) {
+    h1 { font-size: 44px; }
+    #board { font-size: 13px; min-width: 150px; }
+    #board li span { max-width: 105px; }
+    #minimap { width: 96px; height: 96px; top: auto; }
+    #time { font-size: 22px; min-width: 70px; }
+    #toast { font-size: 22px; }
+  }
+</style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.min.js", "three/addons/": "./vendor/addons/" } }
+</script>
+</head>
+<body>
+  <div id="labels"></div>
+  <div id="topL" class="hud"><div id="time" class="chip">2:00</div><div id="scoreBox" class="chip">Puan<span id="score">0</span></div><button id="quit" class="chip" title="Oyunu bitir">🏁 Bitir</button></div>
+  <ol id="board" class="hud chip"></ol>
+  <canvas id="minimap" class="hud" width="160" height="160"></canvas>
+  <div id="powers" class="hud"></div>
+  <div id="combo" class="hud"></div>
+  <div id="toast"></div>
+  <div id="joy"><div id="knob"></div></div>
+  <button id="mute" title="Ses (M)">🔊</button>
+
+  <div id="menu" class="overlay">
+    <div class="card">
+      <h1>Delik <span>Deşik</span></h1>
+      <p class="sub">Mahalleyi yut, en büyük delik sen ol!</p>
+      <input id="name" maxlength="16" placeholder="Adın ne?" autocomplete="off">
+      <div id="swatches"></div>
+      <div class="opts">
+        <div class="row"><label>Rakipler</label>
+          <div class="seg" data-opt="bots"><button data-v="0">Kapalı</button><button data-v="3">3 delik</button><button data-v="6">6 delik</button></div></div>
+        <div class="row"><label>Süre</label>
+          <div class="seg" data-opt="time"><button data-v="120">2 dk</button><button data-v="300">5 dk</button><button data-v="0">Süresiz</button></div></div>
+        <div class="row" id="diffRow"><label>Zorluk</label>
+          <div class="seg" data-opt="diff"><button data-v="kolay">Kolay</button><button data-v="normal">Normal</button><button data-v="zor">Zor</button></div></div>
+      </div>
+      <button id="play" class="btn">OYNA</button>
+      <div class="tips">
+        🖱️ <b>Fare</b> / ⌨️ <b>WASD</b> / 📱 <b>parmakla sürükle</b><br>
+        🐈 Kediler ve insanlar <b>kaçar</b>, peşlerine düş<br>
+        ✨ <b>Altın</b> nesneler 5 kat puan, art arda yut <b>kombo</b> yap<br>
+        💎 Kristaller: 🧲 Mıknatıs · ⚡ Turbo · 🌀 Dev Delik<br>
+        🕰️ En büyük ödül: meydandaki <b>saat kulesi</b><br>
+        🕳️ Senden küçük delikleri de yutabilirsin, büyüklerden kaç!<br>
+        ♾️ <b>Süresiz</b> modda yutulanlar zamanla yeniden çıkar, 🏁 ile bitir
+      </div>
+      <div class="best">En iyi skorun: <b id="best">0</b></div>
+    </div>
+  </div>
+
+  <div id="end" class="overlay hidden">
+    <div class="card">
+      <h1 id="endTitle" style="font-size:38px">Süre bitti!</h1>
+      <ol id="endList" class="list"></ol>
+      <button id="again" class="btn">TEKRAR OYNA</button>
+      <button id="toMenu" class="link">Ayarlar / Menü</button>
+      <div class="best">En iyi skorun: <b id="endBest">0</b></div>
+    </div>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "name": "delikdesik",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Delik Deşik — hole.io tarzı mahalle yutma oyunu",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "license": "MIT",
+  "type": "commonjs"
+}
