@@ -8,6 +8,8 @@ const ROUND_TIME = +process.env.ROUND_TIME || 180; // online tur süresi (sn)
 const BREAK_TIME = 8;           // turlar arası bekleme (sn)
 const MAX_HUMANS = 10;          // oda başına oyuncu
 const r1 = v => Math.round(v * 10) / 10;
+// hareketli nesne: [id, x, z] — araçlarda 4. eleman yön (0:+z 1:+x 2:-z 3:-x)
+const dynRow = o => (o.car ? [o.id, r1(o.x), r1(o.z), o.axis === 'z' ? (o.dir > 0 ? 0 : 2) : (o.dir > 0 ? 1 : 3)] : [o.id, r1(o.x), r1(o.z)]);
 
 class Room {
   constructor(id) {
@@ -43,7 +45,7 @@ class Room {
     for (const o of sim.objs.values()) {
       alive.add(o.id);
       if (o.id >= this.initialCount) spawned.push(desc(o));
-      else if (o.walker || o.car || o.moved) dyn.push([o.id, r1(o.x), r1(o.z)]);
+      else if (o.walker || o.car || o.moved) dyn.push(dynRow(o));
     }
     for (let id = 1; id < this.initialCount; id++) if (!alive.has(id)) removed.push(id);
     c.send({
@@ -101,8 +103,8 @@ class Room {
       // yalnızca oyuncunun çevresindeki hareketli nesneleri gönder
       const h = c.hole, d = [];
       if (h) {
-        const rad = 50 + holeR(h) * 8;
-        sim.query(h.x, h.z, rad, o => { if (o.walker || o.car || o.moved) d.push([o.id, r1(o.x), r1(o.z)]); });
+        const rad = 65 + holeR(h) * 10; // ekranda görünen alandan geniş
+        sim.query(h.x, h.z, rad, o => { if (o.walker || o.car || o.moved) d.push(dynRow(o)); });
       }
       c.ws.send(JSON.stringify({ t: 's', tm: r1(sim.time), h: holes, d, ev }));
     }

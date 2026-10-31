@@ -336,12 +336,13 @@ function update(dt) {
     if (!(o.walker || o.car || o.moved || o.dyn)) continue;
     const px = m.position.x, pz = m.position.z;
     let nx = o.x, nz = o.z;
-    if (smooth && Math.hypot(nx - px, nz - pz) < 15) { const k = Math.min(1, dt * 10); nx = px + (nx - px) * k; nz = pz + (nz - pz) * k; }
+    if (o.snap) { o.snap = false; if (o.car) m.rotation.y = o.ry; }
+    else if (smooth && Math.hypot(nx - px, nz - pz) < 15) { const k = Math.min(1, dt * 10); nx = px + (nx - px) * k; nz = pz + (nz - pz) * k; }
     const mx = nx - px, mz = nz - pz, moved = Math.hypot(mx, mz);
     m.position.x = nx; m.position.z = nz;
-    if (o.car && moved > 0.002 && moved < 3) {
-      // kavşakta dönerken burnunu yumuşakça yeni yöne çevir
-      let da = Math.atan2(mx, mz) - m.rotation.y;
+    if (o.car) {
+      // aracın yönü simülasyondan gelir (hareketten tahmin edilmez); dönüşte burnu yumuşakça çevrilir
+      let da = o.ry - m.rotation.y;
       da = Math.atan2(Math.sin(da), Math.cos(da));
       m.rotation.y += da * Math.min(1, dt * 9);
     }

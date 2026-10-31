@@ -42,7 +42,7 @@ export class Online {
       for (const o of sim.objs.values()) this.objs.set(o.id, fromDesc({ ...o, k: o.walker ? 'w' : o.car ? 'c' : undefined, f: o.floors }));
       for (const id of m.removed) this.objs.delete(id);
       for (const d of m.spawned) this.objs.set(d.id, fromDesc(d));
-      for (const [id, x, z] of m.dyn) { const o = this.objs.get(id); if (o) { o.x = x; o.z = z; } }
+      for (const a of m.dyn) this.applyDyn(a, true);
       this.powerups = m.pw;
       this.meId = m.you;
       this.time = m.time;
@@ -70,7 +70,7 @@ export class Online {
         h.power.magnet = a[6]; h.power.turbo = a[7]; h.power.giant = a[8];
         this.holes.push(h);
       }
-      for (const [id, x, z] of m.d) { const o = this.objs.get(id); if (o) { o.x = x; o.z = z; o.dyn = true; } }
+      for (const a of m.d) this.applyDyn(a);
       for (const ev of m.ev) {
         if (ev.e === 'end') continue; // tur sonu ayrı 'end' mesajıyla (sıralamayla) gelir
         if (ev.e === 'spawn') { if (this.objs.has(ev.o.id)) continue; this.objs.set(ev.o.id, fromDesc(ev.o)); }
@@ -84,6 +84,17 @@ export class Online {
     } else if (m.t === 'pong') {
       this.rtt = this.rtt * 0.7 + ((performance.now() - m.c) / 1000) * 0.3;
     }
+  }
+  // Hareketli nesne güncellemesi. Bir süredir güncellenmeyen (görüş alanı dışında kalmış) nesne
+  // ekranda eski yerinden kaymasın, yeni yerine doğrudan geçsin.
+  applyDyn([id, x, z, dir], fresh = false) {
+    const o = this.objs.get(id);
+    if (!o) return;
+    const now = performance.now();
+    if (fresh || now - (o.seen ?? 0) > 300) o.snap = true;
+    o.seen = now;
+    o.x = x; o.z = z; o.dyn = true;
+    if (dir !== undefined) o.ry = dir * Math.PI / 2;
   }
   setMeta(list) {
     this.meta = new Map(list.map(([id, name, color, human]) => [id, { name, color, human: !!human }]));
