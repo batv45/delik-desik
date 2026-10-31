@@ -381,8 +381,8 @@ let shadowSize = 0;
 function updateCamera(dt) {
   // dikey (telefon) ekranda görüş alanı dar kalır: kamerayı biraz geri çek, açıyı genişlet
   const portrait = camera.aspect < 1;
-  const far = portrait ? Math.min(1.45, Math.sqrt(0.95 / camera.aspect)) : 1;
-  const fov = portrait ? 58 : 50;
+  const far = portrait ? Math.min(1.95, Math.pow(1.05 / camera.aspect, 0.72)) : 1;
+  const fov = portrait ? 64 : 50;
   if (camera.fov !== fov) { camera.fov = fov; camera.updateProjectionMatrix(); }
   let tx, tz, h;
   const P = me(), hv = hviews.get(meId);
