@@ -25,7 +25,7 @@ class Room {
 
   newRound() {
     // online'da botlar yalnızca dolgu: insanları kovalamaz, yavaş büyür; asıl rekabet oyuncular arasında
-    this.sim = new Sim({ seed: (Math.random() * 1e9) | 0, diff: 'kolay', time: ROUND_TIME });
+    this.sim = new Sim({ seed: (Math.random() * 1e9) | 0, diff: 'kolay', time: ROUND_TIME, powerups: false });
     this.initialCount = this.sim.nextId;
     this.breakUntil = 0;
     this.pending = [];

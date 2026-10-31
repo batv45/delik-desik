@@ -15,7 +15,7 @@ Tüm 3D modeller ve sesler kodla üretilir — dışarıdan hiçbir model, doku 
 - **Ayarlar:** rakip sayısı (kapalı / 3 / 6), zorluk (kolay / normal / zor), süre (2 dk / 5 dk / süresiz)
 - **Süresiz mod:** yutulan binalar ve ağaçlar zamanla yeniden çıkar
 - Önüne geçen binalar saydamlaşır, mini harita, sıralama tablosu, mobil dokunmatik kontrol
-- **Online mod:** gerçek oyuncularla aynı mahallede 3 dakikalık turlar; boş yerleri botlar doldurur (oda başına 10 oyuncu)
+- **Online mod:** gerçek oyuncularla aynı mahallede 3 dakikalık turlar; boş yerleri botlar doldurur (oda başına 10 oyuncu); güç kristalleri kapalı
 
 ## Çalıştırma
 

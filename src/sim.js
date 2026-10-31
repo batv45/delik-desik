@@ -58,7 +58,7 @@ export function fromDesc(d) {
 const CELL = 8, GN = Math.ceil((HALF * 2) / CELL) + 1;
 
 export class Sim {
-  constructor({ seed, diff = 'normal', endless = false, time = 120 }) {
+  constructor({ seed, diff = 'normal', endless = false, time = 120, powerups = true }) {
     const { blocks, specs, rng } = generate(seed);
     Object.assign(this, {
       seed, rng, blocks, diff: DIFFS[diff] || DIFFS.normal, endless, time: endless ? 0 : time, t: 0, ended: false,
@@ -80,7 +80,7 @@ export class Sim {
       }
     }
     this.targets = { ...this.counts };
-    this.spawnPowerups(14);
+    if (powerups) this.spawnPowerups(14); // online'da güç kristalleri kapalı
     this.events.length = 0; // başlangıç dünyası olay sayılmaz
   }
 
