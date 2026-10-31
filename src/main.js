@@ -339,6 +339,12 @@ function update(dt) {
     if (smooth && Math.hypot(nx - px, nz - pz) < 15) { const k = Math.min(1, dt * 10); nx = px + (nx - px) * k; nz = pz + (nz - pz) * k; }
     const mx = nx - px, mz = nz - pz, moved = Math.hypot(mx, mz);
     m.position.x = nx; m.position.z = nz;
+    if (o.car && moved > 0.002 && moved < 3) {
+      // kavşakta dönerken burnunu yumuşakça yeni yöne çevir
+      let da = Math.atan2(mx, mz) - m.rotation.y;
+      da = Math.atan2(Math.sin(da), Math.cos(da));
+      m.rotation.y += da * Math.min(1, dt * 9);
+    }
     if (o.walker) {
       if (moved > 0.002 && moved < 3) { m.rotation.y = Math.atan2(mx, mz); v.phase += moved * 4; }
       m.position.y = Math.abs(Math.sin(v.phase)) * (o.type === 'cat' ? 0.06 : 0.1);

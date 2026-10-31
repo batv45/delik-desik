@@ -55,6 +55,10 @@ export function fromDesc(d) {
   return o;
 }
 
+const ROAD_MIN = ROADS[0], ROAD_MAX = ROADS[ROADS.length - 1];
+const LANE = 2.2; // şerit, yol ortasından uzaklık (sağdan akış)
+const carRy = (axis, dir) => (axis === 'z' ? (dir > 0 ? 0 : Math.PI) : (dir > 0 ? Math.PI / 2 : -Math.PI / 2));
+
 const CELL = 8, GN = Math.ceil((HALF * 2) / CELL) + 1;
 
 export class Sim {
@@ -76,7 +80,7 @@ export class Sim {
       for (let k = 0; k < 3; k++) {
         const r = rng();
         const type = r < 0.08 ? 'bus' : r < 0.2 ? 'dolmus' : r < 0.32 ? 'taxi' : 'car';
-        this.spawnCar(type, axis, c, dir, -HALF + rng() * HALF * 2);
+        this.spawnCar(type, axis, c, dir, ROAD_MIN + rng() * (ROAD_MAX - ROAD_MIN));
       }
     }
     this.targets = { ...this.counts };
@@ -139,11 +143,51 @@ export class Sim {
     return o;
   }
   spawnCar(type, axis, line, dir, pos) {
-    const lane = line + dir * 2.2 * (axis === 'z' ? -1 : 1);
+    const lane = line + dir * LANE * (axis === 'z' ? -1 : 1);
     const x = axis === 'z' ? lane : pos, z = axis === 'z' ? pos : lane;
-    const ry = axis === 'z' ? (dir > 0 ? 0 : Math.PI) : (dir > 0 ? Math.PI / 2 : -Math.PI / 2);
     const speed = type === 'bus' ? 3.2 : type === 'dolmus' ? 4.2 : 3.5 + this.rng() * 1.8; // küçük delik turbosuz yetişebilsin
-    return this.spawn(type, x, z, ry, {}, false, { car: true, axis, dir, speed });
+    return this.spawn(type, x, z, carRy(axis, dir), {}, false, { car: true, axis, dir, line, speed, plan: null });
+  }
+
+  // Araçlar yol ağında dolaşır: her kavşaktan önce düz/sağ/sol seçer, dış çevre yolunda mecburen döner.
+  // Dönüş, aracın yeni şeridine tam denk gelen noktada yapılır; böylece konum hiç zıplamaz.
+  carStep(o, dt) {
+    const d = o.dir, key = o.axis;
+    const p0 = o[key];
+    if (!o.plan) {
+      let ahead;
+      for (const r of ROADS) if ((r - p0) * d > 0 && (ahead === undefined || Math.abs(r - p0) < Math.abs(ahead - p0))) ahead = r;
+      if (ahead === undefined) return this.carUturn(o); // yolun bittiği yerdeyse geri dön
+      if ((ahead - p0) * d <= 7) { o.plan = this.carPlan(o, ahead, p0); if (!o.plan) return this.carUturn(o); }
+    }
+    const p1 = p0 + o.speed * d * dt;
+    o[key] = p1;
+    const pl = o.plan;
+    if (!pl) return;
+    if (pl.straight) { if ((p1 - pl.c) * d > LANE + 0.5) o.plan = null; }
+    else if ((p1 - pl.t) * d >= 0) {
+      o[key] = pl.t;
+      o.axis = key === 'z' ? 'x' : 'z';
+      o.line = pl.c; o.dir = pl.nd; o.ry = carRy(o.axis, o.dir); o.plan = null;
+    }
+  }
+  carPlan(o, c, p) {
+    const d = o.dir, L = o.line, opts = [];
+    if (!((d > 0 && c === ROAD_MAX) || (d < 0 && c === ROAD_MIN))) opts.push({ straight: true, c, w: 3 });
+    for (const nd of [1, -1]) {
+      if ((L === ROAD_MAX && nd > 0) || (L === ROAD_MIN && nd < 0)) continue; // haritanın dışına giden dönüş yok
+      const t = o.axis === 'z' ? c + nd * LANE : c - nd * LANE;     // yeni şeridin bu eksendeki konumu
+      if ((t - p) * d > 0) opts.push({ c, nd, t, w: 1 });
+    }
+    if (!opts.length) return null;
+    let r = this.rng() * opts.reduce((a, b) => a + b.w, 0);
+    for (const x of opts) { r -= x.w; if (r <= 0) return x; }
+    return opts[opts.length - 1];
+  }
+  carUturn(o) {
+    o.dir = -o.dir; o.plan = null;
+    if (o.axis === 'z') o.x = o.line - o.dir * LANE; else o.z = o.line + o.dir * LANE;
+    o.ry = carRy(o.axis, o.dir);
   }
   spawnPowerups(n) {
     const r = this.rng;
@@ -347,9 +391,7 @@ export class Sim {
         o.ry = Math.atan2(mx, mz);
         this.gridMove(o);
       } else if (o.car) {
-        const s = o.speed * o.dir * dt;
-        if (o.axis === 'z') { o.z += s; if (o.z > HALF) o.z = -HALF; else if (o.z < -HALF) o.z = HALF; }
-        else { o.x += s; if (o.x > HALF) o.x = -HALF; else if (o.x < -HALF) o.x = HALF; }
+        this.carStep(o, dt);
         this.gridMove(o);
       }
     }
@@ -373,8 +415,11 @@ export class Sim {
       if (this.counts.person < this.targets.person * 0.75) this.spawnWalker('person', blk(), far);
       if (this.counts.cat < this.targets.cat * 0.75) this.spawnWalker('cat', blk(), far);
       if (this.counts.car < this.targets.car * 0.6) {
-        const ax = r() < 0.5 ? 'x' : 'z', dir = r() < 0.5 ? 1 : -1;
-        this.spawnCar(r() < 0.15 ? 'dolmus' : 'car', ax, ROADS[(r() * ROADS.length) | 0], dir, dir > 0 ? -HALF : HALF);
+        // yeni araç oyunculardan uzakta, yolun üzerinde belirir
+        const ax = r() < 0.5 ? 'x' : 'z', dir = r() < 0.5 ? 1 : -1, line = ROADS[(r() * ROADS.length) | 0];
+        const pos = ROAD_MIN + r() * (ROAD_MAX - ROAD_MIN);
+        const x = ax === 'z' ? line : pos, z = ax === 'z' ? pos : line;
+        if (far.every(h => Math.hypot(h.x - x, h.z - z) > 35)) this.spawnCar(r() < 0.15 ? 'dolmus' : 'car', ax, line, dir, pos);
       }
     }
   }
