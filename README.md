@@ -15,19 +15,29 @@ Tüm 3D modeller ve sesler kodla üretilir — dışarıdan hiçbir model, doku 
 - **Ayarlar:** rakip sayısı (kapalı / 3 / 6), zorluk (kolay / normal / zor), süre (2 dk / 5 dk / süresiz)
 - **Süresiz mod:** yutulan binalar ve ağaçlar zamanla yeniden çıkar
 - Önüne geçen binalar saydamlaşır, mini harita, sıralama tablosu, mobil dokunmatik kontrol
+- **Online mod:** gerçek oyuncularla aynı mahallede 3 dakikalık turlar; boş yerleri botlar doldurur (oda başına 10 oyuncu)
 
 ## Çalıştırma
 
-Node.js gerekir (ek paket kurulumu yok):
+Node.js 18+ gerekir:
 
 ```bash
+npm install
 npm start
 # http://localhost:8091
 ```
 
-Farklı port için: `PORT=3000 npm start`
+Ortam değişkenleri: `PORT` (varsayılan 8091), `ROUND_TIME` (online tur süresi, sn, varsayılan 180).
 
-Herhangi bir statik sunucu da olur (ör. `python3 -m http.server`); dosyaları doğrudan `file://` ile açmak ES modülleri yüzünden çalışmaz.
+Online mod `/ws` adresinde WebSocket kullanır. Önde Nginx gibi bir ters vekil varsa WebSocket yükseltmesine izin verilmeli:
+
+```nginx
+proxy_http_version 1.1;
+proxy_set_header Upgrade $http_upgrade;
+proxy_set_header Connection "upgrade";
+```
+
+Oyun durumu sunucu belleğinde tutulduğu için uygulama **tek süreç** çalışmalı (PM2'de `instances: 1`, cluster modu değil).
 
 ## Kontroller
 
@@ -42,17 +52,21 @@ Herhangi bir statik sunucu da olur (ör. `python3 -m http.server`); dosyaları d
 
 ```
 index.html        Arayüz (menü, HUD, stiller)
-src/main.js       Oyun motoru: delik, yutma, botlar, kamera, HUD
+src/sim.js        Oyun mantığı (delik, yutma, botlar) — tarayıcıda ve sunucuda aynı kod
+src/main.js       Çizim, kamera, HUD, menü ve oyun akışı
+src/net.js        Online mod istemcisi
 src/models.js     Kodla üretilen low-poly 3D modeller
 src/world.js      Harita üretimi ve zemin dokusu
 src/audio.js      WebAudio ile üretilen ses efektleri
-server.js         Basit statik sunucu
+server.js         Web sunucusu (dosyalar + /api/stats)
+game-server.mjs   Online oyun sunucusu: odalar, turlar, botlar (WebSocket)
 vendor/           Three.js r170
 ```
 
 ## Yol haritası
 
-- [ ] Çok oyunculu mod (WebSocket sunucusu)
+- [x] Çok oyunculu mod (WebSocket sunucusu)
+- [ ] Arkadaşla özel oda (davet kodu)
 
 ## Lisans
 
